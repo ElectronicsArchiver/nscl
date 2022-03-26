@@ -77,6 +77,8 @@
 
 	try {
 		
+		console.clear();
+		
 		self.include = include;
 		
 		for(const folder in scripts)
