@@ -18,28 +18,70 @@
  * this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-"use strict";
-try {
-  let BASE = "";
-  self.include = src => Array.isArray(src) ? importScripts(...src) : importScripts(src);
 
-  let includeFrom = (dir, srcs) =>  include(srcs.map(name => `${BASE}/${dir}/${name}.js`));
+'use strict';
 
-  includeFrom("lib", [
-    "browser-polyfill", "punycode", "sha256"
-  ]);
+{
 
-  includeFrom("common", [
-    "UA", "uuid", "log", "locale",
-    "tld", "Messages",
-    "CSP", "CapsCSP", "NetCSP",
-    "RequestKey", "Sites", "Permissions", "Policy",
-    "Storage",
-  ]);
+	const { isArray } = Array;
+	const { error } = console;
 
-  includeFrom("service", [
-    "TabCache"
-  ]);
-} catch (e) {
-  console.error(e);
+
+	let BASE = '';
+
+
+	const scripts = {
+		lib : [
+			'browser-polyfill',
+			'punycode',
+			'sha256'
+		],
+		common : [
+			'UA',
+			'uuid',
+			'log',
+			'locale',
+			'tld',
+			'Messages',
+			'CSP',
+			'CapsCSP',
+			'NetCSP',
+			'RequestKey',
+			'Sites',
+			'Permissions',
+			'Policy',
+			'Storage'
+		],
+		service : [
+			'TabCache'
+		]
+	};
+
+
+	const include = (script) => isArray(script)
+		? importScripts(...script)
+		: importScripts(script) ;
+		
+
+	const includeFrom = (directory,sources) => {
+		
+		const toPath = (source) =>
+			`${ BASE }/${ directory }/${ source }.js`;
+			
+		const scripts = sources
+			.map(toPath);
+		
+		include(scripts);
+	}
+
+
+	try {
+		
+		self.include = include;
+		
+		for(const folder in scripts)
+			includeFrom(folder,scripts[folder]);
+
+	} catch (e) { error(e); }
+
 }
