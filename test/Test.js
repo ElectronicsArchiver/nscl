@@ -30,8 +30,19 @@
 		'color : inherit' ,
 	);
 	
+	const style_icon = toStyle(
+		'font-size : 16px' ,
+		'font-weight : bold'
+	);
+	
 	const style_none = toStyle(
 		'color : #ce8ce9' ,
+		'font-weight : bold' ,
+		'border-radius : 2px' ,
+	);
+	
+	const style_headline = toStyle(
+		'color : #4a8fcd' ,
 		'font-weight : bold' ,
 		'border-radius : 2px' ,
 	);
@@ -128,38 +139,44 @@
 			return noneConducted();
 		
 		if(failed == 0)
-			return failedAll(count);
+			return passedAll(count);
 		
 		if(passed == 0)
-			return passedAll(count);
+			return failedAll(count);
 		
 		failedSome(failed,count);
 	}
 	
 	
 	function noneConducted(){
-		log(`%c\nNo Tests Have Been Conducted\n`,
-			style_none);
-	}
-	
-	function failedAll(count){
-		log(`\nAll %c${ count } %cTests Have %cPassed\n`,
-			style_passed,style_default,style_passed);
+		log(`\n%c❌%c  No Tests Have Been Conducted\n`,
+			style_icon,style_none);
 	}
 	
 	function passedAll(count){
-		log(`\nAll %c${ count } %cTests Have %cFailed\n`,
-			style_failed,style_default,style_failed);
+		log(`\n%c✅  %cAll %c${ count } %cTests Have %cPassed\n`,
+			style_icon,style_default,style_passed,style_default,style_passed);
+	}
+	
+	function failedAll(count){
+		log(`\n%c❌  All %c${ count } %cTests Have %cFailed\n`,
+			style_icon,style_failed,style_default,style_failed);
 	}
 	
 	function failedSome(failed,count){
-		log(`%\nc${ failed } %c/ ${ count } Tests Have %cFailed\n`,
-			style_failed,style_default,style_failed);
+		log(`\n%c❌%c  ${ failed } %c/ ${ count } Tests Have %cFailed\n`,
+			style_icon,style_failed,style_default,style_failed);
+	}
+	
+	function headline(title){
+		log(`%c\n${ title }\n${ ''.padEnd(title.length,'▰') }\n`,
+			style_headline);
 	}
 	
 	
 	self.Test = {
 		include : includeTest ,
-		report , run 
+		report , run ,
+		headline
 	};
 }

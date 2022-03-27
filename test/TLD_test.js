@@ -20,7 +20,7 @@
 
 
 {
-	const { run } = Test;
+	const { headline , run } = Test;
 	const { max } = Math;
 	
 	
@@ -186,6 +186,8 @@
 		[ 'xn--fiqs8s' , null ] 
 	];
 	
+	
+	headline('Public Suffix Tests');
 	
 	for(const testCase of domains)
 		checkPublicSuffix(testCase);
