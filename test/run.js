@@ -18,11 +18,11 @@
  * this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+
 (async () => {
-  await include("/test/Test.js");
-  Test.include([
-    "Policy",
-    "Storage",
-    "TLD",
-  ]);
+	
+	await include('/test/Test.js');
+
+	await Test.include([ 'Policy' , 'Storage' , 'TLD' ]);
+	
 })();

@@ -88,8 +88,6 @@
 		
 		for(let test of tests){
 			
-			log(`Testing ${ test }`);
-			
 			passed = failed = 0;
 
 			const path = resolvePath(test);
@@ -120,6 +118,7 @@
 			passed++;
 			log(`%cPASSED  %c${ message }`,style_passed,style_code);
 		} else {
+			failed++;
 			log(`%cFAILED  %c${ message }`,style_failed,style_code);
 		}
 		
