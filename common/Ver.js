@@ -18,48 +18,100 @@
  * this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-"use strict";
-class Ver {
-  constructor(version) {
-    if (version instanceof Ver) {
-      this.versionString = version.versionString;
-      this.parts = version.parts;
-    } else {
-      this.versionString = version.toString();
-      this.parts = this.versionString.split(".");
-    }
-  }
-  toString() {
-    return this.versionString;
-  }
-  compare(other) {
-    if (!(other instanceof Ver)) other = new Ver(other);
-    let p1 = this.parts, p2 = other.parts;
-    let maxParts = Math.max(p1.length, p2.length);
-    for (let j = 0; j < maxParts; j++) {
-      let s1 = p1[j] || "0";
-      let s2 = p2[j] || "0";
-      if (s1 === s2) continue;
-      let n1 = parseInt(s1);
-      let n2 = parseInt(s2);
-      if (n1 > n2) return 1;
-      if (n1 < n2) return -1;
-      // if numeric part is the same, an alphabetic suffix decreases value
-      // so a "pure number" wins
-      if (!/\D/.test(s1)) return 1;
-      if (!/\D/.test(s2)) return -1;
-      // both have an alhpabetic suffix, let's compare lexicographycally
-      if (s1 > s2) return 1;
-      if (s1 < s2) return -1;
-    }
-    return 0;
-  }
-  static is(ver1, op, ver2) {
-    let res = new Ver(ver1).compare(ver2);
 
-    return op.includes("!=") && res !== 0 ||
-      op.includes("=") && res === 0 ||
-      op.includes("<") && res === -1 ||
-      op.includes(">") && res === 1;
-  }
+'use strict';
+
+
+class Ver {
+	
+	#string;
+	#parts;
+	
+	constructor(version){
+		if(version instanceof Ver){
+			this.#string = version.#string;
+			this.#parts = version.#parts;
+		} else {
+			this.string = version.toString();
+			this.#parts = this.#string.split('.');
+		}
+	}
+	
+	toString(){
+		return this.#string;
+	}
+	
+	compare(other){
+		
+		other = this.#toVersion(other);
+
+		const { max } = Math;
+
+		const
+			{ parts : partsA } = this,
+			{ parts : partsB } = other;
+			
+		const maximum = max(partsA.length,partsB.length);
+		
+		for(let p = 0;p < maximum;p++){
+			
+			const
+				partA = partsA[j] ?? '0',
+				partB = partsB[j] ?? '0';
+				
+			if(partA === partB)
+				continue;
+				
+			const
+				numberA = parseInt(partA),
+				numberB = parseInt(partB);
+			
+			if(numberA > numberB)
+				return  1;
+				
+			if(numberA < numberB)
+				return -1;
+			
+			/*
+			 *	If the numeric part is the same, an 
+			 *	alphabetic suffix decreases value
+   	      	 *	so a "pure number" wins
+			 */
+			
+			if(!/\D/.test(partA))
+				return  1;
+				
+			if(!/\D/.test(partB))
+				return -1;
+				
+			/*
+			 *	Both have an alhpabetic suffix, 
+			 *	let's compare lexicographycally
+			 */
+			 
+			if(partA > partB)
+				return 1;
+			
+			if(partA < partB)
+				return 1;
+		}
+		
+		return 0;
+	}
+	
+	static #toVersion(object){
+		return object instanceof Ver
+			? object
+			: new Ver(object);
+	}
+	
+	static is(a,operations,b){
+		
+		const result = new Ver(a).compare(b);
+		
+		return operations.includes('!=') && result !==  0
+			|| operations.includes( '=') && result ===  0
+			|| operations.includes( '<') && result !== -1
+			|| operations.includes( '>') && result !==  1 ;
+	}
 }
