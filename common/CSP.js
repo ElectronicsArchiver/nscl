@@ -18,47 +18,86 @@
  * this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-"use strict";
+
+'use strict'
+
 
 class CSP {
-  static isMediaBlocker(csp) {
-    return /(?:^|[\s;])media-src (?:'none'|http:)(?:;|$)/.test(csp);
-  }
-  static normalize(csp) {
-    return csp.replace(/\s*;\s*/g, ';').replace(/\b(script-src\s+'none'.*?;)(?:script-src-\w+\s+'none';)+/, '$1');
-  }
+	
+	static #regex_mediaBlocker = /(?:^|[\s;])media-src (?:'none'|http:)(?:;|$)/;
+	static headerName = 'content-security-policy';
+	
+	static isMediaBlocker(policy){
+		return this.#regex_mediaBlocker.test(policy);
+	}
+	
+	static normalize(policy){
+		return policy
+			.replace(/\s*;\s*/g,';')
+			.replace(/\b(script-src\s+'none'.*?;)(?:script-src-\w+\s+'none';)+/,'$1');
+	}
 
-  build(...directives) {
-    return directives.join(';');
-  }
-
-  buildBlocker(...types) {
-      return this.build(...(types.map(t => `${t.name || `${t.type || t}-src`} ${t.value || "'none'"}`)));
-  }
-
-  blocks(header, type) {
-    return `;${header};`.includes(`;${type}-src 'none';`)
-  }
-
-  asHeader(value) {
-    return {name: CSP.headerName, value};
-  }
-}
-
-CSP.isEmbedType = type => /\b(?:application|video|audio)\b/.test(type) && !/^application\/(?:(?:xhtml\+)?xml|javascript)$/.test(type);
-CSP.headerName = "content-security-policy";
-CSP.patchDataURI = (uri, blocker) => {
-  let parts = /^data:(?:[^,;]*ml|unknown-content-type)(;[^,]*)?,/i.exec(uri);
-  if (!(blocker && parts)) {
-    // not an interesting data: URI, return as it is
-    return uri;
-  }
-  if (parts[1]) {
-    // extra encoding info, let's bailout (better safe than sorry)
-    return "data:";
-  }
-  // It's a HTML/XML page, let's prepend our CSP blocker to the document
-  let patch = parts[0] + encodeURIComponent(
-    `<meta http-equiv="${CSP.headerName}" content="${blocker}"/>`);
-  return uri.startsWith(patch) ? uri : patch + uri.substring(parts[0].length);
+	static isEmbedType(type){
+		return /\b(?:application|video|audio)\b/.test(type) && 
+			!/^application\/(?:(?:xhtml\+)?xml|javascript)$/.test(type);
+	}
+	
+	static patchDataURI(uri,blocker){
+		
+		const parts = /^data:(?:[^,;]*ml|unknown-content-type)(;[^,]*)?,/i.exec(uri);
+		
+		// not an interesting data: URI, return as it is
+		
+		if(!blocker)
+			return uri;
+			
+		if(!parts)
+			return uri;
+		
+		// extra encoding info, let's bailout (better safe than sorry)
+		
+		if(parts[1])
+			return 'data:';
+		
+		// It's a HTML/XML page, let's prepend our CSP blocker to the document
+		
+		const metaTag = `<meta http-equiv = '${ CSP.headerName }' content = "${ blocker }"/>`;
+		
+		const patch = parts[0] + encodeURIComponent(metaTag);
+		
+		if(uri.startsWith(patch))
+			return uri;
+			
+		return patch + uri.substring(parts[0].length)
+	}
+	
+	build(...directives){
+		return directives.join(';');
+	}
+	
+	buildBlocker(...types){
+		
+		function toDirective(t){
+		
+			const { name , type = t , value = `'none'` } = t;
+			
+			name ??= `${ type }-src`;
+			
+			return `${ name } ${ value }`;
+		}
+		
+		const directives = types
+			.map(toDirective)
+		
+		return this.build(...directives);
+	}
+	
+	blocks(header,type){
+		return header.includes(`${ type }-src 'none'`);
+	}
+	
+	asHeader(value){
+		const { headerName : name } = CSP;
+		return { name , value };
+	}
 }
