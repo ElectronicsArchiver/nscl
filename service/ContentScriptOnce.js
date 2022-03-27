@@ -18,81 +18,129 @@
  * this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-var ContentScriptOnce = (() => {
-  "use strict";
 
-  let requestMap = new Map();
+{
+	'use strict'
+	
+	
+	const defaultId = `{r.tabId}:{r.frameId}:{r.url}`;
+	
+	
+	const { contentScripts , webNavigation , webRequest , runtime } = browser;
+	const { stringify } = JSON;
+	
+	
+	const requests = new Map;
+	
+	const getId = (request) =>
+		request.requestId ?? defaultId;
+	
+		
+	let initalize = () => {
+	
+		initalize = () => {};
+		
+		function clean(request){
+			
+			const id = getId(request);
+			
+			if(!requests.has(id))
+				return;
+				
+			const scripts = request.get(id);
+			
+			setTimeout(() => {
+				requests.delete(id);
+				
+				for(const script of scripts)
+					script.unregister();
+			},0);
+		}
+		
+		let filter = {
+			urls : [ '<all_urls>' ] ,
+			types : [ 'main_frame' , 'sub_frame' , 'object' ]
+		};
+		
+		for(const event of [ 'onCompleted' , 'onErrorOccurred' ]){
+			webNavigation[event].addListener(clean);
+			webRequest[event].addListener(clean,filter);
+		}
+		
+		const { onMessage } = runtime;
+		
+		onMessage.addListener(({ __contentScriptOnce__ },sender) => {
+	      
+			if(!__contentScriptOnce__)
+				return;
 
-  let getId = r => r.requestId || `{r.tabId}:{r.frameId}:{r.url}`;
+			const { requestId , tabId , frameId , url } = __contentScriptOnce__;
 
-  let initOnce = () => {
-    let initOnce = () => {};
+			let success = false;
 
-    let cleanup = r => {
-      let id = getId(r);
+			if(
+				tabId === sender.tab.id && 
+				frameId === sender.frameId && 
+				url === sender.url
+			){
+				cleanup({ requestId });
+				success = true;
+			}
 
-      let scripts = requestMap.get(id);
-      if (scripts) {
-        window.setTimeout(() => {
-          requestMap.delete(id);
-          for (let s of scripts) s.unregister();
-        }, 0);
-      }
-    }
-
-    let filter = {
-      urls: ["<all_urls>"],
-      types:  ["main_frame", "sub_frame", "object"]
-    };
-
-    for (let event of ["onCompleted", "onErrorOccurred"]) {
-      browser.webRequest[event].addListener(cleanup, filter);
-      browser.webNavigation[event].addListener(cleanup);
-    }
-
-    browser.runtime.onMessage.addListener(({__contentScriptOnce__}, sender)  => {
-      if (!__contentScriptOnce__) return;
-      let {requestId, tabId, frameId, url} = __contentScriptOnce__;
-      let ret = false;
-      if (tabId === sender.tab.id && frameId === sender.frameId && url === sender.url) {
-        cleanup({requestId});
-        ret = true;
-      }
-      return Promise.resolve(ret);
-    });
-  }
-
-  return {
-    async execute(request, options) {
-      initOnce();
-      let {tabId, frameId, url, requestId} = request;
-      let scripts = requestMap.get(requestId);
-      if (!scripts) requestMap.set(requestId, scripts = new Set());
-      let match = url;
-      try {
-        let urlObj = new URL(url);
-        if (urlObj.port) {
-          urlObj.port = "";
-          match = urlObj.toString();
+			return Promise.resolve(success);
+	    });
+	};
+	
+	
+	function execute(request,options){
+		
+		initalize();
+        
+		const { tabId , frameId , url , requestId } = request;
+		
+        const scripts = requests.get(requestId);
+		
+        if(!scripts){
+			scripts = new Set;
+			requestMap.set(requestId,scripts);
         }
-      } catch (e) {}
-      let defOpts = {
-        runAt: "document_start",
-        matchAboutBlank: true,
-        matches: [match],
-        allFrames: true,
-        js: [],
-      };
+		
+		let match = url;
+		
+        try {
+			const address = new URL(url);
+			
+			if(address.port){
+				address.port = '';
+				match = address.toString();
+			}
+        } catch (e) {}
+		
+        options = {
+			matchAboutBlank : true ,
+			allFrames : true,
+			matches : [ match ] ,
+			runAt : 'document_start' ,
+			js : [] ,
+			...options
+        };
 
-      options = Object.assign(defOpts, options);
-      let ackMsg = {
-        __contentScriptOnce__: {requestId, tabId, frameId, url}
-      };
-      options.js.push({
-        code: `if (document.readyState !== "complete") browser.runtime.sendMessage(${JSON.stringify(ackMsg)});`
-      });
+        const acknowledgement = stringify({
+         	__contentScriptOnce__ : { requestId , tabId , frameId , url }
+	 	});
+		
+		const code = `
+			if(document.readyState !== 'complete')
+				browser.runtime.sendMessage(${ acknowledgement });
+		`;
+		
+        options.js.push({ code });
 
-      scripts.add(await browser.contentScripts.register(options));
-    }
-  }
-})();
+		const script = await contentScripts.register(options);
+
+        scripts.add(script);
+	}
+	
+	
+	self.ContentScriptOnce = { execute };
+}
