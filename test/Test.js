@@ -107,9 +107,9 @@
 		
 		if(success){
 			passed++;
-			log(`%cPASSED  %c${ test }`,style_passed,style_code);
+			log(`%cPASSED  %c${ message }`,style_passed,style_code);
 		} else {
-			log(`%cFAILED  %c${ test }`,style_failed,style_code);
+			log(`%cFAILED  %c${ message }`,style_failed,style_code);
 		}
 		
 		if(callback)

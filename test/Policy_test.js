@@ -18,55 +18,159 @@
  * this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+
 {
-  let p1 = new Policy();
-  p1.set("noscript.net", new Permissions(["script"], true));
-  p1.set("https://noscript.net", new Permissions(["script", "object"]));
-  p1.set("maone.net", p1.TRUSTED.tempTwin);
-  p1.set(Sites.secureDomainKey("secure.informaction.com"), p1.TRUSTED);
-  p1.set("https://flashgot.net", p1.TRUSTED);
-  p1.set("http://flashgot.net", p1.UNTRUSTED);
-  p1.set("perchè.com", p1.TRUSTED);
-  p1.set("10", p1.TRUSTED);
-  p1.set("192.168", p1.TRUSTED);
-  p1.set("192.168.69", p1.UNTRUSTED);
+	const { run } = Test;
+	
+	
+	{
+		const { stringify } = JSON;
+		
+		const original = new Policy;
+		original.set('noscript.net',new Permissions([ 'script' ],true));
+		original.set('https://noscript.net',new Permissions([ 'script' , 'object' ]));
+		original.set('maone.net',original.TRUSTED.tempTwin);
+		original.set(Sites.secureDomainKey('secure.informaction.com'),original.TRUSTED);
+		original.set('https://flashgot.net',original.TRUSTED);
+		original.set('http://flashgot.net',original.UNTRUSTED);
+		original.set('perchè.com',original.TRUSTED);
+		original.set('10', original.TRUSTED);
+		original.set('192.168',original.TRUSTED);
+		original.set('192.168.69',original.UNTRUSTED);
+		
+		const copy = new Policy(original.dry());
+		
+		
+		run(() => stringify(original.dry()) === stringify(copy.dry()),
+			`The static content of a copied policy is the same as the originals.`);
+			
+		run(() => original.snapshot !== copy.snapshot,
+			`The dynamic content of a statically copied policy is not the same as the originals`);
+			
+		
+		run(() => copy.can('https://noscript.net'),
+			`A temporarily trusted secure website with script permissions can be accessed.`);
+			
+		run(() => ! copy.can('http://noscript.net'),
+			`A temporarily trusted secure website cannot be used to access it's insecure counterpart.`);
+			
+		run(() => copy.can('https://noscript.net','object'),
+			`A temporarily trusted website with script permissions cannot use objects.`);
+	}
+	
+	
+	{
+		const policy = new Policy;
+		policy.set('perchè.com',policy.TRUSTED);
+		
+		run(() => policy.can('http://perchè.com/test'),
+			`A trusted, unsecure, IDN encoded, page can be accessed.`);
+	}
+	
+	{
+		const { toExternal } = Sites;
+		
+		const url = 'https://perché.com/test';
+		const external = toExternal(new URL(url));
+		
+		run(() => external === url,
+			`The content of a IDN encoded, then decoded url stays the same.`);
+	}
+	
+	{
+		// SecureDomainKey should be "downgraded" by UNTRUSTED, issue #126
+		
+		const 
+			page = 'evil.com',
+			http = `http://${ page }`,
+			secure = Sites.secureDomainKey('evil.com');
+		
+		const policy = new Policy;
+		policy.set(secure,policy.UNTRUSTED);
+		
+		run(() => ! policy.can(http),
+			`Untrusting a secure page will also unstrust it's insecure counterpart`);
+	}
+	
+	{
+		// Treating Tor onion URLs like HTTPS
+		
+		const secureOnion = Sites.onionSecure;
+		
+		
+		Sites.onionSecure = true;
+		
+		const url = 'http://some.onion';
+		
+		const policy = new Policy;
+		policy.set(url,policy.TRUSTED);
+		
+		run(() => policy.can(url),
+			`Onion urls are treated like https urls.`);
+		
+		
+		Sites.onionSecure = secureOnion;
+	}
+	
+	{
+		const 
+			page = 'secure.informaction.com',
+			secure = Sites.secureDomainKey(page);
 
-  // contextual policies
-  p1.set("facebook.net", new Permissions([], false,
-    new Sites([[Sites.optimalKey("https://facebook.com"), p1.TRUSTED]])));
+		const 
+			https = `https://${ page }` ,
+			http = `http://${ page }` ,
+			www = `https://www.${ page }`;
+		
+		const policy = new Policy;
+		policy.set(secure,policy.TRUSTED);
+		
+		
+		run(() => ! policy.can(http),
+			`A trusted secure pages insecure counterpart cannot be accessed.`);
+			
+		run(() => policy.can(https),
+			`A trusted secure page can be accessed.`);
+			
+		run(() => policy.can(www),
+			`A trusted secure page can be accessed on it's 'www' subdomain.`);
+	}
+	
+	{
+		// Contextual Policies
+	
+		const optimal = Sites.optimalKey('https://facebook.com');
+		
+		const policy = new Policy;
+		const trusted = new Sites([[ optimal , policy.TRUSTED ]]);	
+		policy.set('facebook.net',new Permissions([],false,trusted));
 
-  // secureDomainKey should be "downgraded" by UNTRUSTED, issue #126
-  p1.set(Sites.secureDomainKey("evil.com"), p1.UNTRUSTED);
-
-  // treating Tor onion URLs like HTTPS
-  let onionSecureCurrent = Sites.onionSecure;
-  Sites.onionSecure = true;
-  p1.set("http://some.onion", p1.TRUSTED);
-
-  // p2 copy to test cloning / serialization
-  let p2 = new Policy(p1.dry());
-
-  for(let t of [
-    () => p2.can("https://noscript.net"),
-    () => !p2.can("http://noscript.net"),
-    () => p2.can("https://noscript.net", "object"),
-    () => p1.snapshot !== p2.snapshot,
-    () => JSON.stringify(p1.dry()) === JSON.stringify(p2.dry()),
-    () => p1.can("http://perchè.com/test") /* IDN encoding */,
-    () => Sites.toExternal(new URL("https://perché.com/test")) ===
-          "https://perché.com/test" /* IDN decoding */,
-    () => !p1.can("http://secure.informaction.com"),
-    () => p1.can("https://secure.informaction.com"),
-    () => p1.can("https://www.secure.informaction.com"),
-    () => !p1.can("https://192.168.69.1"),
-    () => !p1.can("https://10.0.0.1"),
-    () => p1.can("http://192.168.1.2"),
-    () => p1.can("http://some.onion"),
-    () => !p1.can("http://evil.com"),
-    () => !p1.can("https://facebook.net"),
-    () => p1.can("https://facebook.net", "script", "https://www.facebook.com"),
-    () => !p1.can("https://facebook.net", "script", "http://facebook.com"),
-  ]) Test.run(t);
-  Sites.onionSecure = onionSecureCurrent;
-  Test.report();
+		run(() => ! policy.can('https://facebook.net'),
+			`A trusted insecure page cannot be accessed from it's secure counterpart.`);
+		
+		run(() => policy.can('https://facebook.net','script','https://www.facebook.com'),
+			`On a trusted secure page, script resource from the same page can be accessed.`);
+		
+		run(() => ! policy.can('https://facebook.net','script','http://facebook.com'),
+			`On the insecure counterpart of a trusted secure page, script resources from the secure site cannot be accessed.`);
+	}
+	
+	{
+		const policy = new Policy;
+		policy.set('10',policy.TRUSTED);
+		policy.set('192.168',policy.TRUSTED);
+		policy.set('192.168.69',policy.UNTRUSTED);
+		
+		run(() => ! policy.can('https://10.0.0.1'),
+			`Trusting an incomplete Ip with only it's first part does not succeed.`);
+			
+		run(() => ! policy.can('https://192.168.69.1'),
+			`Not trusting an incomplete Ip with it's first three parts succeeds.`);
+			
+		run(() => policy.can('http://192.168.1.2'),
+			`Trusting an incomplete Ip with only it's first two parts succeeds.`);
+	}
+	
+	
+	Test.report();
 }
