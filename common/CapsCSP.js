@@ -18,36 +18,54 @@
  * this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-"use strict";
 
-function CapsCSP(baseCSP = new CSP()) {
-  return Object.assign(baseCSP, {
-    types: ["script", "object", "media", "font"],
-    dataUriTypes: ["font", "media", "object"],
-    buildFromCapabilities(capabilities, blockHttp = false) {
-      let forbidData = new Set(this.dataUriTypes.filter(t => !capabilities.has(t)));
-      let blockedTypes = new Set(this.types.filter(t => !capabilities.has(t)));
-      if(!capabilities.has("script")) {
-        blockedTypes.add({name: "script-src-elem"});
-        blockedTypes.add({name: "script-src-attr"});
-        blockedTypes.add("worker");
-        if (!blockedTypes.has("object")) {
-          // data: URIs loaded in objects may run scripts
-          blockedTypes.add({type: "object", value: "http:"});
-        }
-      }
+'use strict';
 
-      if (!blockHttp) {
-        // HTTP is blocked in onBeforeRequest, let's allow it only and block
-        // for instance data: and blob: URIs
-        for (let type of this.dataUriTypes) {
-          if (blockedTypes.delete(type)) {
-            blockedTypes.add({type, value: "http:"});
-          }
-        }
-      }
 
-      return blockedTypes.size ? this.buildBlocker(...blockedTypes) : null;
-    }
-  });
+function CapsCSP(base = new CSP){
+	
+	function buildFromCapabilities(capabilities,blockHttp = false){
+		
+		const { dataUriTypes , types } = this;
+		
+		let blocked = types.filter((type) => ! capabilities.has(type));
+		
+		blocked = new Set(blocked);
+
+		if(!capabilities.has('script')){
+			
+			blocked.add({ name : 'script-src-elem' });
+			blocked.add({ name : 'script-src-attr' });
+			blocked.add('worker');
+
+
+			// data: URIs loaded in objects may run scripts
+
+			if(!blocked.has('object'))
+				blocked.add({ type : 'object' , value : 'http:' });
+		}
+		
+		/*
+		 *	HTTP is blocked in onBeforeRequest
+		 *	let's allow it only and block for
+		 *	instance data: and blob: URIs
+		 */
+		
+		if(!blockHttp)
+			dataUriTypes
+			.filter((type) => blocked.delete(type))
+			.forEach((type) => blocked.add({ type , value : 'http:' }));
+			
+		if(blocked.size)
+			return this.buildBlocker(...blocked);
+		
+		return null;
+	}
+	
+	return {
+		...base ,
+		types : [ 'script' , 'object' , 'media' , 'font' ] ,
+		dataUriTypes : [ 'font' , 'media' , 'object' ] ,
+		buildFromCapabilities	
+	};
 }
