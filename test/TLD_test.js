@@ -19,7 +19,7 @@
  */
 
 
-{
+Test.registerSuite(async () => {
 	const { headline , run } = Test;
 	const { max } = Math;
 	
@@ -191,6 +191,4 @@
 	
 	for(const testCase of domains)
 		checkPublicSuffix(testCase);
-		
-	Test.report();
-}
+});

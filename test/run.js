@@ -25,4 +25,7 @@
 
 	await Test.include([ 'Policy' , 'Storage' , 'TLD' ]);
 	
+	await Test.runSuites();
+	Test.report();
+	
 })();

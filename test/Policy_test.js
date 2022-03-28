@@ -19,7 +19,8 @@
  */
 
 
-{
+Test.registerSuite(async () => {
+	
 	const { headline , run } = Test;
 	
 	
@@ -173,7 +174,4 @@
 		run(() => policy.can('http://192.168.1.2'),
 			`Trusting an incomplete Ip with only it's first two parts succeeds.`);
 	}
-	
-	
-	Test.report();
-}
+});

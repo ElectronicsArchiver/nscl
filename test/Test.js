@@ -173,7 +173,21 @@
 	}
 	
 	
+	const suites = new Set;
+	
+	function registerSuite(suite){
+		suites.add(suite);
+	}
+	
+	async function runSuites(){
+		for(const suite of suites)
+			await suite();
+	}
+	
+	
 	self.Test = {
+		registerSuite ,
+		runSuites ,
 		include : includeTest ,
 		report , run ,
 		headline

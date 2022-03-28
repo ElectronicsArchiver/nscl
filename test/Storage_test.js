@@ -22,7 +22,7 @@
 'use strict';
 
 
-(async () => {
+Test.registerSuite(async () => {
 	
 	const { stringify } = JSON;
 	
@@ -242,6 +242,4 @@
 		return length === 0;
 	},`The storage can be completely cleaned.`);
 	
-
-	Test.report();
-})();
+});
