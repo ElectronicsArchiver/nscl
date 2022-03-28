@@ -70,11 +70,12 @@
 			data = await get('sync',key) ,
 			current = data[key] ;
 		
-		const isEqual = current[property] === value;
+		if(current[property] === value)
+			return true;
 		
-		log(`\t>>\t sync.${ key }.${ property } ${ isEqual ? '==' : '!=' } ${ value }\n\t\t\tData: %o`,current);
+		log(`\t>>\t sync.${ key }.${ property } != ${ value }\n\t\t\tData: %o`,current);
 		
-		return isEqual;
+		return false;
 	}
 	
 	async function fallbackOrChunked(key){
@@ -83,11 +84,16 @@
 			fallback = await hasLocalFallback(key),
 			chunked = await isChunked(key);
 		
+		const result = fallback
+			? ! chunked
+			:   chunked ;
+		
+		if(result)
+			return true;
+		
 		log(`\t>>\tKey: %o\n\t\tFallback: %o\n\t\tChunked: %o`,key,fallback,chunked);
 		
-		return fallback 
-			? ! chunked
-			:   chunked;
+		return false;
 	}
 	
 	async function checkSize(key,size){
@@ -146,6 +152,11 @@
 			localData = await local.get() ,
 			syncData = await sync.get() ;
 		
+		const { length } = Object.keys(everything);
+		
+		if(length === keys.length)
+			return true;
+		
 		const info = [
 			`\t>>\t Storage` ,
 			`\t  \t -------` ,
@@ -170,9 +181,7 @@
 		
 		log(info.join('\n'),syncData,localData,keys,everything);
 		
-		const { length } = Object.keys(everything);
-		
-		return  length === keys.length;
+		return false;
 	},`All stored objects are still present.`);
 	
 	
@@ -216,7 +225,7 @@
 			return false;
 			
 		return ! await isChunked(key);
-	},``);
+	},`The big object was chunked but isn't after being replaced with a tiny value.`);
 	
 	
 	await run(async () => compare('big','tiny','prop'),
